@@ -1,0 +1,146 @@
+<!DOCTYPE HTML>
+<html>
+ <head>
+  <title>Flask-SocketIO Test</title>
+    <link rel="stylesheet" href="static/jquery-ui.min.css">
+    <script src="static/jquery-3.2.1.min.js"></script>
+    <script src="static/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js"></script>
+    <script src="static/plotly-latest.min.js"></script>
+    <script src="static/gauge.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+     $(document).ready(function() {
+      namespace = '/test';
+      var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+
+      socket.on('connect', function() {
+        socket.emit('my_event', {data: 'I\'m connected!'}); 
+      });
+
+      socket.on('AKTUALdata', function(msg) {
+        $('#log').append('Received : ' + msg+'<br>').html(); 
+      });
+      
+      socket.on('LOADEDdata', function(msg) {
+        $('#log').append('Received : ' + msg+'<br>').html(); 
+      });
+        
+      socket.on('disconn', function(msg) {
+        $('#log').append(msg.data+'<br>').html(); 
+      });
+      
+      
+      
+      
+      
+
+      $('#savedb').click(function(event) {
+          socket.emit('my_event', {value: $('#emit_value').val()});
+          return false; 
+      });
+      
+      $('#savefile').click(function(event) {
+          socket.emit('my_event', {value: $('#emit_value').val()});
+          return false; 
+      });
+      
+      $('form#loaddb').submit(function(event) {
+          socket.emit('my_event', {value: $('#emit_value').val()});
+          return false; 
+      });
+      
+      $('form#loadfile').submit(function(event) {
+          socket.emit('my_event', {value: $('#emit_value').val()});
+          return false; 
+      });
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      $('form#disconnect').submit(function(event) {
+          socket.emit('disconnect_request');
+          return false; 
+      });         
+      
+      $('#buttonVal').click(function(event) {
+          if( $('#buttonVal').val() == 'start'){
+            socket.emit('click_event', {value: $('#buttonVal').val()});
+            $('#buttonVal').val('stop');
+            $('#buttonVal').html('Stop');
+            return false; 
+          }
+          if( $('#buttonVal').val() == 'stop'){
+            socket.emit('click_event', {value: $('#buttonVal').val()});
+            $('#buttonVal').val('start');
+            $('#buttonVal').html('Start');
+            return false; 
+          }
+      });
+      
+      $( function() {
+        $("#tabs").tabs({ event: "mouseover"});
+      });
+    });
+    </script>
+ </head>
+ <body>
+  <h1>POIT - VEMS</h1>
+    <div id="tabs">
+      <ul>
+        <li><a href="#tabs-1">Data</a></li>
+        <li><a href="#tabs-2">Nacitanie</a></li>
+      </ul>
+   
+    
+      <div id="tabs-1" style="width=100%">
+        <button id="buttonVal" type="submit" value="start">Start</button>
+        <br>
+        <br>
+        <form id="disconnect" method="POST" action="#">
+          <input type="submit" value="Disconnect">
+        </form> 
+        <br>
+        <button id="savedb" type="submit" value="savetoDatabase">Ulozit do databazy</button>
+        <button id="savefile" type="submit" value="savetoFile">Ulozit do suboru</button>
+        <h2>Receive:</h2>
+        <div id="log"></div>
+        <canvas id="rucickovy" style="display:inline;border:solid black 1px"></canvas>
+        <div id="plot1" style="width:1000px;height:300px;border:solid black 1px"></div>
+        <div id="plot2" style="width:1000px;height:300px;border:solid black 1px"></div>
+
+      </div>
+      
+      <div id="tabs-2" style="width=100%">
+          <form id="loaddb" method="POST" action='#'>
+            <label for="ldb">Nacitat z databazy </label>
+            <input type="text" name="ldb" id="ldb">
+            <input type="submit" value="Nacitat">
+          </form>
+          <br>
+          <form id="loadfile" method="POST" action='#'>
+            <label for="lfile">Nacitat zo suboru  </label>
+            <input type="text" name="lfile" id="lfile">
+            <input type="submit" value="Nacitat">
+          </form>
+          <br>
+          
+          <div id="loadplot1" style="width:1000px;height:300px;border:solid black 1px"></div>
+          <div id="loadplot2" style="width:1000px;height:300px;border:solid black 1px"></div>
+          <div id="loadplot3" style="width:1000px;height:300px;border:solid black 1px"></div>
+          <div id="loadplotdata" style="width:1000px;height:300px;border:solid black 1px"></div>
+            
+      </div>
+      
+    </div>
+
+ </body>
+</html>
