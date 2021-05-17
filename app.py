@@ -7,6 +7,7 @@ import configparser as ConfigParser
 import MySQLdb
 import json
 import serial
+import re
 
 async_mode = None
 
@@ -28,24 +29,37 @@ def background_thread(args):
     count = 0    
     dataList = []
     db = MySQLdb.connect(host=myhost,user=myuser,passwd=mypasswd,db=mydb)
-    s = serial.Serial('/dev/ttyS1',19200)
+    s = serial.Serial('/dev/ttyACM0',19200)
+    
+    rpm = 0
+    m = 0
+    l = 0
     
     while True:
 
         print(args)
         
         if args.get('btn_value')=='start':
+
+            for i in range(0,2):
+                ize = s.readline()
+                ize = ize.decode('ascii')
+                ono = re.findall(r'([0-9A-F]+)',ize)
+
+                if ono[0]=='1' :
+                    rpm = int(ono[2],16)*256 + int(ono[3],16)
             
-            ize = s.readline()
-            print(ize)
-            ize = ize.decode('ascii')
-            print(ize)
-            
+                if ono[0]=='45' :
+                    m = int(ono[2],16)*256 + int(ono[3],16)
+
+                if ono[0]=='69' :
+                    l = int(ono[2],16)*256 + int(ono[3],16)
+                    l = l/1000
+                
             dataDict = {
-            "t": time.time(),
-            "x": count,
-            "siny": math.sin(time.time()),
-            "cosy": math.cos(time.time()) }
+            "rpm": rpm,
+            "map": m,
+            "lambda": l }
             
             socketio.emit('AKTUALdata',dataDict, namespace='/test')
             
@@ -65,7 +79,9 @@ def background_thread(args):
                 cursor.execute("INSERT INTO graph (id, hodnoty) VALUES (%s, %s)", (newid, fuj))
                 db.commit()
                 dataList = []
-                count = 0  
+                count = 0
+                
+        time.sleep(0.1)
 
 @app.route('/')
 def index():
@@ -74,7 +90,6 @@ def index():
 @socketio.on('my_event', namespace='/test')
 def test_message(message):   
     session['receive_count'] = session.get('receive_count', 0) + 1 
-    session['A'] = message['value']
  
 @socketio.on('disconnect_request', namespace='/test')
 def disconnect_request():
@@ -93,6 +108,7 @@ def test_connect():
 
 @socketio.on('click_event', namespace='/test')
 def db_message(message):
+    print("Start")
     session['btn_value'] = message['value']
     emit('status', {'data': message['value']})
 
