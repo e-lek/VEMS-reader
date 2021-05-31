@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
  <head>
-  <title>Flask-SocketIO Test</title>
+  <title>POIT-VEMS</title>
     <link rel="stylesheet" href="static/jquery-ui.min.css">
     <script src="static/jquery-3.2.1.min.js"></script>
     <script src="static/jquery-ui.min.js"></script>
@@ -19,6 +19,7 @@
 
       socket.on('AKTUALdata', function(msg) {
         $('#log').append('Received : ' + msg+'<br>').html(); 
+        console.log(msg);
       });
       
       socket.on('LOADEDdata', function(msg) {
@@ -28,7 +29,6 @@
       socket.on('disconn', function(msg) {
         $('#log').append(msg.data+'<br>').html(); 
       });
-      
       
       
       
@@ -53,14 +53,6 @@
           socket.emit('my_event', {value: $('#emit_value').val()});
           return false; 
       });
-      
-      
-      
-      
-      
-      
-      
-      
       
       
       

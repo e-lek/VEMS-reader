@@ -29,7 +29,11 @@ def background_thread(args):
     count = 0    
     dataList = []
     db = MySQLdb.connect(host=myhost,user=myuser,passwd=mypasswd,db=mydb)
-    s = serial.Serial('/dev/ttyACM0',19200)
+    s = serial.Serial('/dev/ttyS1',19200)
+    dbsavecount = 0
+    filesavecount = 0
+    loaddbcount = 0
+    cursor = db.cursor()
     
     rpm = 0
     m = 0
@@ -45,6 +49,7 @@ def background_thread(args):
                 ize = s.readline()
                 ize = ize.decode('ascii')
                 ono = re.findall(r'([0-9A-F]+)',ize)
+                print(ize) 
 
                 if ono[0]=='1' :
                     rpm = int(ono[2],16)*256 + int(ono[3],16)
@@ -64,23 +69,51 @@ def background_thread(args):
             socketio.emit('AKTUALdata',dataDict, namespace='/test')
             
             dataList.append(dataDict)
-            
-        else:
+
+        if args.get('dbsavecount') > dbsavecount :
             if len(dataList)>0:
-                fuj = str(dataList).replace("'", "\"")
-                cursor = db.cursor()
-                cursor.execute("SELECT MAX(id) FROM graph")
-                maxid = cursor.fetchone()
-                if maxid[0] is None:
-                    maxID=0
-                else:
-                    maxID=maxid[0]
-                newid=maxID + 1
-                cursor.execute("INSERT INTO graph (id, hodnoty) VALUES (%s, %s)", (newid, fuj))
-                db.commit()
-                dataList = []
-                count = 0
+                print("db save")
                 
+                fuj = str(dataList).replace("'", "\"")
+                
+                cursor.execute("SELECT MAX(id) FROM autodata")
+                zvonzik = cursor.fetchone()
+                if zvonzik[0] is None:
+                    dbid=0
+                else:
+                    dbid=zvonzik[0]
+                dbid=dbid + 1
+                cursor.execute("INSERT INTO autodata (id, data) VALUES (%s, %s)", (dbid, fuj))
+                db.commit()
+            
+                dbsavecount=dbsavecount+1
+                dataList = []
+            
+        if args.get('filesavecount') > filesavecount :
+            if len(dataList)>0:
+                print("file save")
+                
+                fuj = str(dataList).replace("'", "\"")
+                
+                f = open("text.txt","r")
+                txt=fo.read()
+                f.close()
+                f = open("text.txt","a+")
+                f.write(txt)
+                f.write(fuj+"\n")
+                f.close()
+  
+                filesavecount=filesavecount+1
+                dataList = []
+                
+        if args.get('loaddbcount') > loaddbcount :
+            dbid = args.get('loaddbid')
+            
+            cursor.execute("SELECT data FROM autodata WHERE id=?", dbid)
+            data = json.dumps(cur.fetchall())
+            
+            emit('LOADEDdata',{'data': data})
+                     
         time.sleep(0.1)
 
 @app.route('/')
@@ -110,11 +143,32 @@ def test_connect():
 def db_message(message):
     print("Start")
     session['btn_value'] = message['value']
-    emit('status', {'data': message['value']})
 
 @socketio.on('disconnect', namespace='/test')
 def test_disconnect():
     print('Client disconnected', request.sid)
+    
+@socketio.on('loaddb', namespace='/test')
+def loaddb():
+    session['loaddbcount']= session.get('loaddbcount', 0) + 1
+    session['loaddbid']=message['value']
+
+@socketio.on('savedb', namespace='/test')
+def savedb():
+    session['dbavecount']= session.get('dbsavecount', 0) + 1
+    
+
+@socketio.on('loadfile', namespace='/test')
+def loadfile():
+    f = open("text.txt","r")
+    ize =f.readlines()
+    f.close()
+    ono = ize[int(message['value'])-1]
+    emit('LOADEDdata',{'data': ono})
+    
+@socketio.on('savefile', namespace='/test')
+def savefile():
+    session['filesavecount']= session.get('filesavecount', 0) + 1
 
 if __name__ == '__main__':
     socketio.run(app, host="0.0.0.0", port=80, debug=True)
