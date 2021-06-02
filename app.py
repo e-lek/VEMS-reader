@@ -70,7 +70,7 @@ def background_thread(args):
             
             dataList.append(dataDict)
 
-        if args.get('dbsavecount') > dbsavecount :
+        if int(args.get('dbsavecount') or 0) > dbsavecount :
             if len(dataList)>0:
                 print("db save")
                 
@@ -89,14 +89,14 @@ def background_thread(args):
                 dbsavecount=dbsavecount+1
                 dataList = []
             
-        if args.get('filesavecount') > filesavecount :
+        if int(args.get('filesavecount') or 0) > filesavecount :
             if len(dataList)>0:
                 print("file save")
                 
                 fuj = str(dataList).replace("'", "\"")
                 
                 f = open("text.txt","r")
-                txt=fo.read()
+                txt=f.read()
                 f.close()
                 f = open("text.txt","a+")
                 f.write(txt)
@@ -106,13 +106,11 @@ def background_thread(args):
                 filesavecount=filesavecount+1
                 dataList = []
                 
-        if args.get('loaddbcount') > loaddbcount :
-            dbid = args.get('loaddbid')
-            
-            cursor.execute("SELECT data FROM autodata WHERE id=?", dbid)
-            data = json.dumps(cur.fetchall())
-            
-            emit('LOADEDdata',{'data': data})
+        if int(args.get('loaddbcount') or 0) > loaddbcount :
+            cursor.execute("SELECT data FROM autodata WHERE id=%s", (args.get('loaddbid'),))
+            data = cursor.fetchone()
+            socketio.emit('LOADEDdata',{'data': data}, namespace='/test')
+            loaddbcount = loaddbcount + 1
                      
         time.sleep(0.1)
 
@@ -149,17 +147,16 @@ def test_disconnect():
     print('Client disconnected', request.sid)
     
 @socketio.on('loaddb', namespace='/test')
-def loaddb():
+def loaddb(message):
     session['loaddbcount']= session.get('loaddbcount', 0) + 1
-    session['loaddbid']=message['value']
+    session['loaddbid']=int(message['value'])
 
 @socketio.on('savedb', namespace='/test')
 def savedb():
-    session['dbavecount']= session.get('dbsavecount', 0) + 1
-    
+    session['dbsavecount']= session.get('dbsavecount', 0) + 1
 
 @socketio.on('loadfile', namespace='/test')
-def loadfile():
+def loadfile(message):
     f = open("text.txt","r")
     ize =f.readlines()
     f.close()

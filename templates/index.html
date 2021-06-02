@@ -12,19 +12,157 @@
      $(document).ready(function() {
       namespace = '/test';
       var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+      
+      var gauge = new RadialGauge({
+          renderTo: 'rucickovy',
+          width: 300,
+          height: 300,
+          units: "1/min",
+          minValue: 0,
+          maxValue: 7000,
+          majorTicks: [
+              "0",
+              "1000",
+              "2000",
+              "3000",
+              "4000",
+              "5000",
+              "6000",
+              "7000"
+          ],
+          minorTicks: 100,
+          strokeTicks: true,
+          colorPlate: "#fff",
+          borderShadowWidth: 0,
+          borders: false,
+          needleType: "arrow",
+          needleWidth: 2,
+          needleCircleSize: 7,
+          needleCircleOuter: true,
+          needleCircleInner: false,
+          animationDuration: 1500,
+          animationRule: "linear"
+      });
+      gauge.draw();  
 
       socket.on('connect', function() {
         socket.emit('my_event', {data: 'I\'m connected!'}); 
       });
 
+      var rpm = new Array();
+      var map = new Array();
+      var lambda = new Array();
+      var i = new Array();
+      var maptrace = new Array();
+      var lambdatrace = new Array();
+      var rpmtrace = new Array();
+      
       socket.on('AKTUALdata', function(msg) {
-        $('#log').append('Received : ' + msg+'<br>').html(); 
         console.log(msg);
+        $('#log').append('Received : ' + JSON.stringify(msg) +'<br>').html(); 
+        gauge.value = msg.rpm;
+        
+        map.push(msg.map); 
+        lambda.push(msg.lambda);
+        rpm.push(msg.rpm);
+        i.push(i.length +1);
+        
+        rpmtrace = {
+            x: i,
+            y: rpm
+        };       
+        var layout = {
+          title: 'RPM [1/min]'
+        };
+        var traces = new Array();
+        traces.push(rpmtrace);
+        Plotly.newPlot($('#plot0')[0], traces, layout); 
+        
+        maptrace = {
+            x: i,
+            y: map
+        };       
+        var layout = {
+          title: 'Map [mBar]'
+        };
+        traces = new Array();
+        traces.push(maptrace);
+        Plotly.newPlot($('#plot1')[0], traces, layout); 
+        
+        lambdatrace = {
+            x: i,
+            y: lambda
+        };       
+        var layout = {
+          title: 'Lambda'
+        };
+        traces = new Array();
+        traces.push(lambdatrace);
+        Plotly.newPlot($('#plot2')[0], traces, layout); 
+        
       });
       
+      var loaded_rpm = new Array();
+      var loaded_map = new Array();
+      var loaded_lambda = new Array();
+      var j = new Array();
+      var loaded_maptrace = new Array();
+      var loaded_lambdatrace = new Array();
+      var loaded_rpmtrace = new Array();
+      
       socket.on('LOADEDdata', function(msg) {
-        $('#log').append('Received : ' + msg+'<br>').html(); 
+        $('#loadplot1').empty();
+        $('#loadplot2').empty();
+        $('#loadplot3').empty();
+        $('#loadplotdata').empty();      
+        data = JSON.parse(msg.data);
+        console.log(data);
+        
+        var ize;
+        for(ize=0;ize<Object.keys(data).length;ize++){
+          loaded_map.push(data[ize].map); 
+          loaded_lambda.push(data[ize].lambda);
+          loaded_rpm.push(data[ize].rpm);
+          j.push(j.length +1);
+          $('#loadplotdata').append(JSON.stringify(data[ize]) +'<br>').html();
+        }
+        
+        loaded_rpmtrace = {
+            x: j,
+            y: loaded_rpm
+        };       
+        var layout = {
+          title: 'RPM [1/min]'
+        };
+        var traces = new Array();
+        traces.push(loaded_rpmtrace);
+        Plotly.newPlot($('#loadplot1')[0], traces, layout); 
+        
+        loaded_maptrace = {
+            x: j,
+            y: loaded_map
+        };       
+        var layout = {
+          title: 'Map [mBar]'
+        };
+        traces = new Array();
+        traces.push(loaded_maptrace);
+        Plotly.newPlot($('#loadplot2')[0], traces, layout); 
+        
+        loaded_lambdatrace = {
+            x: j,
+            y: loaded_lambda
+        };       
+        var layout = {
+          title: 'Lambda'
+        };
+        traces = new Array();
+        traces.push(loaded_lambdatrace);
+        Plotly.newPlot($('#loadplot3')[0], traces, layout); 
+        
       });
+      
+      
         
       socket.on('disconn', function(msg) {
         $('#log').append(msg.data+'<br>').html(); 
@@ -35,22 +173,22 @@
       
 
       $('#savedb').click(function(event) {
-          socket.emit('my_event', {value: $('#emit_value').val()});
+          socket.emit('savedb');
           return false; 
       });
       
       $('#savefile').click(function(event) {
-          socket.emit('my_event', {value: $('#emit_value').val()});
+          socket.emit('savefile');
           return false; 
       });
       
       $('form#loaddb').submit(function(event) {
-          socket.emit('my_event', {value: $('#emit_value').val()});
+          socket.emit('loaddb', {value: $('#ldb').val()});
           return false; 
       });
       
       $('form#loadfile').submit(function(event) {
-          socket.emit('my_event', {value: $('#emit_value').val()});
+          socket.emit('loadfile', {value: $('#lfile').val()});
           return false; 
       });
       
@@ -103,11 +241,16 @@
         <br>
         <button id="savedb" type="submit" value="savetoDatabase">Ulozit do databazy</button>
         <button id="savefile" type="submit" value="savetoFile">Ulozit do suboru</button>
-        <h2>Receive:</h2>
-        <div id="log"></div>
+        <h2>Aktualne data:</h2>
+        <h2>RPM :</h2>
         <canvas id="rucickovy" style="display:inline;border:solid black 1px"></canvas>
+        <div id="plot0" style="width:1000px;height:300px;border:solid black 1px"></div>
+        <h2>Map :</h2>
         <div id="plot1" style="width:1000px;height:300px;border:solid black 1px"></div>
+        <h2>Lambda :</h2>
         <div id="plot2" style="width:1000px;height:300px;border:solid black 1px"></div>
+        <br>
+        <div id="log"></div>
 
       </div>
       
@@ -128,7 +271,7 @@
           <div id="loadplot1" style="width:1000px;height:300px;border:solid black 1px"></div>
           <div id="loadplot2" style="width:1000px;height:300px;border:solid black 1px"></div>
           <div id="loadplot3" style="width:1000px;height:300px;border:solid black 1px"></div>
-          <div id="loadplotdata" style="width:1000px;height:300px;border:solid black 1px"></div>
+          <div id="loadplotdata"></div>
             
       </div>
       
